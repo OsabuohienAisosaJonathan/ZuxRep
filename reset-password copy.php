@@ -1,4 +1,77 @@
+<?php
+// Initialize the session
+session_start();
+ 
+// Check if the user is logged in, otherwise redirect to login page
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
+    header("location: login.php");
+    exit;
+}
+ 
+// Include config file
+require_once "config.php";
+ 
+// Define variables and initialize with empty values
+$new_password = $confirm_password = "";
+$new_password_err = $confirm_password_err = "";
+ 
+// Processing form data when form is submitted
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+ 
+    // Validate new password
+    if(empty(trim($_POST["new_password"]))){
+        $new_password_err = "Please enter the new password.";     
+    } elseif(strlen(trim($_POST["new_password"])) < 6){
+        $new_password_err = "Password must have atleast 6 characters.";
+    } else{
+        $new_password = trim($_POST["new_password"]);
+    }
+    
+    // Validate confirm password
+    if(empty(trim($_POST["confirm_password"]))){
+        $confirm_password_err = "Please confirm the password.";
+    } else{
+        $confirm_password = trim($_POST["confirm_password"]);
+        if(empty($new_password_err) && ($new_password != $confirm_password)){
+            $confirm_password_err = "Password did not match.";
+        }
+    }
+        
+    // Check input errors before updating the database
+    if(empty($new_password_err) && empty($confirm_password_err)){
+        // Prepare an update statement
+        $sql = "UPDATE users SET password = ? WHERE id = ?";
+        
+        if($stmt = mysqli_prepare($link, $sql)){
+            // Bind variables to the prepared statement as parameters
+            mysqli_stmt_bind_param($stmt, "si", $param_password, $param_id);
+            
+            // Set parameters
+            $param_password = password_hash($new_password, PASSWORD_DEFAULT);
+            $param_id = $_SESSION["id"];
+            
+            // Attempt to execute the prepared statement
+            if(mysqli_stmt_execute($stmt)){
+                // Password updated successfully. Destroy the session, and redirect to login page
+                session_destroy();
+                header("location: login.php");
+                exit();
+            } else{
+                echo "Oops! Something went wrong. Please try again later.";
+            }
+
+            // Close statement
+            mysqli_stmt_close($stmt);
+        }
+    }
+    
+    // Close connection
+    mysqli_close($link);
+}
+?>
+
 <!DOCTYPE html>
+
     <head>
         <meta charset="utf-8">
         <title>ZuxRep</title>
@@ -7,8 +80,12 @@
         
         <!-- Add the following line to include the favicon -->
         <link rel="icon" type="image/png" href="images/favicon/favicon-16x16.png">
+        
+        <!--Login & Signup Font Icon -->
+        <link rel="stylesheet" href="fonts/material-icon/css/material-design-iconic-font.min.css">
 
         <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
 
         <link rel="stylesheet" href="css/bootstrap.css">
         <link rel="stylesheet" href="css/font-awesome.css">
@@ -17,7 +94,10 @@
         <link rel="stylesheet" href="css/flexslider.css">
         <link rel="stylesheet" href="css/testimonials-slider.css">
 
-        <script src="js/vendor/modernizr-2.6.1-respond-1.1.0.min.js"></script>
+        <!-- Signup & Login css -->
+        <link rel="stylesheet" href="css/main.css">
+
+        
     </head>
     <body>
             <header>
@@ -38,7 +118,7 @@
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="logo">
-                                    <a href="#"><img src="images/logo.png" title="ZuxRep" alt="ZuxRep website" width="50px"></a> 
+                                    <a href="#"><img src="images/logo.png" title="ZuxRep" alt="ZuxRep website" width="50px"></a>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -48,7 +128,6 @@
                                         <li><a href="about-us.html">About</a></li>
                                         <li><a href="products.html">Products</a></li>
                                         <li><a href="contact-us.html">Contact</a></li>
-                                        <li><a href="login.php">GET ACCESS</a></li>
                                     </ul>
                                 </div>
                             </div>
@@ -64,133 +143,81 @@
                     </div>
                 </div>
             </header>
+
             
 
-            <div id="slider">
-                <div class="flexslider">
-                  <ul class="slides">
-                    <li>
-                        <div class="slider-caption">
-                            <h1>Classic Receipts</h1>
-                            <p>We generate receipts specailly for your business 
-                            <br><br>Our receipts are built with standard user-friendly features.</p>
-                            <a href="sign-up.php">Sign Up Now</a>
-                        </div>
-                      <img src="images/slide1.jpg" alt="" />
-                    </li>
-                    <li>
-                        <div class="slider-caption">
-                            <h1>State of the Art design</h1>
-                            <p>we make Receipts with state of the Art designs  
-                            <br><br>Colors that compliments its background.</p>
-                            <a href="sign-up.php">Get Started</a>
-                        </div>
-                      <img src="images/slide2.jpg" alt="" />
-                    </li>
-                    <li>
-                        <div class="slider-caption">
-                            <h1>24/7 customer service</h1>
-                            <p>ZuxRep is there to ensure your needs and complaints are meant 24/7 round the clock 
-                            <br><br>Your customers' satisfaction is our major concern.</p>
-                            <a href="sign-up.com">Get started</a>
-                        </div>
-                      <img src="images/slide3.jpg" alt="" />
-                    </li>
-                  </ul>
-                </div>
-            </div>
-
-
-            <div id="services">
+            <div id="heading">
                 <div class="container">
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="heading-section">
-                                <h2>Our Services</h2>
-                                <img src="images/under-heading.png" alt="" >
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-3 col-sm-6">
-                            <div class="service-item">
-                                <div class="icon">
-                                    <i class="fa fa-pencil"></i>
-                                </div>
-                                <h4>User-Friendly Interface</h4>
-                                <p>ZuxRep is an intuitive and easy-to-navigate interface, allowing users to generate receipts quickly and effortlessly.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="service-item">
-                                <div class="icon">
-                                    <i class="fa fa-bullhorn"></i>
-                                </div>
-                                <h4>Multiple Currency Support</h4>
-                                <p>ZuxRep caters to users from different regions or countries, it should supports multiple currencies. This allows users to generate receipts in their preferred currency.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="service-item">
-                                <div class="icon">
-                                    <i class="fa fa-bell"></i>
-                                </div>
-                                <h4>Automatic Calculation</h4>
-                                <p>ZuxRep performs automatic calculations for items, quantities, prices, taxes, and total amounts. This reduces the chances of errors and ensures accurate receipts.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="service-item">
-                                <div class="icon">
-                                    <i class="fa fa-heart"></i>
-                                </div>
-                                <h4>Secure Data Handling</h4>
-                                <p>Security is crucial when handling financial information. ZuxRep implements secure data transmission (SSL) and storage practices to protect sensitive user and transaction data.</p>
+                            <div class="heading-content">
+                                <h2>ACCESS YOUR ACCOUNT</h2>
+                                <span>Home / <a href="login.html">Passord Reset</a></span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="testimonials">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="heading-section">
-                                <h2>What Customers Say</h2>
-                                <img src="images/under-heading.png" alt="" >
+            <div class="main">
+                <!-- Log in  Form -->
+                <section class="sign-in">
+                    <div class="container">
+                        <div class="signin-content">
+                            <!-- <div class="signin-image">
+                                <figure><img src="images/signin-image.jpg" alt="sing up image"></figure>
+                                <a href="#" class="signup-image-link">Create an account</a>
+                            </div> -->
+        
+                            <div class="signin-form">
+                                <h2 class="form-title">Reset your Account</h2>
+                                <?php 
+                                    if(!empty($login_err)){
+                                        echo '<div class="alert alert-danger">' . $login_err . '</div>';
+                                    }        
+                                ?>
+                                <form method="POST" class="register-form" id="login-form" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                                    <div class="form-group">
+                                        <label for="new_password"><i class="zmdi zmdi-account material-icons-name"></i></label>
+                                        <input type="password" name="new_password" id="your_pass" placeholder="Your New Password" class="form-control <?php echo (!empty($new_password_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $new_password; ?>
+                                        <span class="invalid-feedback"><?php echo $new_password_err; ?></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="password"><i class="zmdi zmdi-lock"></i></label>
+                                        <input type="password" name="confirm_password" id="your_pass" placeholder="confirm Password" class="form-control <?php echo (!empty($confirm_password_err)) ? 'is-invalid' : ''; ?>"/>
+                                        <span class="invalid-feedback"><?php echo $confirm_password_err; ?></span>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="checkbox" name="remember-me" id="remember-me" class="agree-term" />
+                                        <label for="remember-me" class="label-agree-term"><span><span></span></span>Remember me</label>
+                                    </div>
+                                    <div class="form-group form-button">
+                                        <input type="submit" name="signin" id="signin" class="form-submit" value="submit"/>
+                                        <a class="btn btn-link ml-2" href="welcome.php">Cancel</a>
+                                    </div>
+                                </form>
+        
+                                <div class="sign-up">
+                                    <a href="sign-up.php">Don't have an account? Sign up now</a>
+                                </div>
+                                <!-- <div class="social-login">
+                                    <span class="social-label">Or login with</span>
+                                    <ul class="socials">
+                                        <li><a href="#"><i class="display-flex-center zmdi zmdi-facebook"></i></a></li>
+                                        <li><a href="#"><i class="display-flex-center zmdi zmdi-twitter"></i></a></li>
+                                        <li><a href="#"><i class="display-flex-center zmdi zmdi-google"></i></a></li>
+                                    </ul>
+                                </div> -->
                             </div>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-8 col-md-offset-2">
-                            <div class="testimonails-slider">
-                              <ul class="slides">
-                                <li>
-                                    <div class="testimonails-content">
-                                        <p>Sed egestas tincidunt mollis. Suspendisse rhoncus vitae enim et faucibus. Ut dignissim nec arcu nec hendrerit sed arcu odio, sagittis vel diam in, malesuada malesuada risus. Aenean a sem leo. Nam ultricies dolor et mi tempor, non pulvinar felis sollicitudin.</p>
-                                        <h6>Jennifer - <a href="#">Chief Designer</a></h6>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="testimonails-content">
-                                        <p>Sed egestas tincidunt mollis. Suspendisse rhoncus vitae enim et faucibus. Ut dignissim nec arcu nec hendrerit sed arcu odio, sagittis vel diam in, malesuada malesuada risus. Aenean a sem leo. Nam ultricies dolor et mi tempor, non pulvinar felis sollicitudin.</p>
-                                        <h6>Laureen - <a href="#">Marketing Executive</a></h6>
-                                    </div> 
-                                </li>
-                                <li>
-                                    <div class="testimonails-content">
-                                        <p>Sed egestas tincidunt mollis. Suspendisse rhoncus vitae enim et faucibus. Ut dignissim nec arcu nec hendrerit sed arcu odio, sagittis vel diam in, malesuada malesuada risus. Aenean a sem leo. Nam ultricies dolor et mi tempor, non pulvinar felis sollicitudin.</p>
-                                        <h6>Tanya - <a href="#">Creative Director</a></h6>
-                                    </div>
-                                </li>
-                              </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </section>
+        
             </div>
+        
 
+
+            
 			<footer>
                 <div class="container">
                     <div class="top-footer">
@@ -222,7 +249,7 @@
                                 <div class="about">
                                     <h4 class="footer-title">About ZuxRep</h4>
                                     <p>ZuxRep is a free <span class="blue">receipt generating website with easy receipt template with customizable features.
-                                    <br><br>Credit goes to <a rel="nofollow" href="#">Ghost</a>.</p>
+                                    <br><br>Credit goes to <a rel="nofollow" href="http://unsplash.com">Ghost</a>.</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -246,7 +273,7 @@
                                     <ul>
                                         <li><i class="fa fa-phone"></i>+234-8156-885306</li>
                                         <li><i class="fa fa-globe"></i>PMB 1154 Ugbowo Lagos road, Benin city, Nigeria</li>
-                                        <li><i class="fa fa-envelope"></i><a href="#">info@zuxarep.com</a></li>
+                                        <li><i class="fa fa-envelope"></i><a href="#">zux@anthascil.com</a></li>
                                     </ul>
                                 </div>
                             </div>
@@ -267,6 +294,8 @@
         <script src="js/vendor/jquery.gmap3.min.js"></script>
         <script src="js/plugins.js"></script>
         <script src="js/main.js"></script>
-
+        <script src="js/vendor/modernizr-2.6.1-respond-1.1.0.min.js"></script>
+        <script src="vendor/jquery/jquery.min.js"></script>
+        <script src="js/mainLS.js"></script>
     </body>
 </html>
